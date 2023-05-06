@@ -7,34 +7,22 @@ from pygame import *
 import sys
 from os.path import abspath, dirname
 from random import choice
+import unittest
 
 #Game option import
 from game_option import *
 
 class Ship(sprite.Sprite):
-    '''The Ship class is a sprite class that represents a player-controlled spaceship in a space invader game. 
-    It inherits from the sprite.Sprite class, which is a Pygame class for creating and manipulating sprite objects.'''
     def __init__(self):
-        '''The __init__ method is called when a new Ship object is created, and it initializes the object's attributes.
-        Specifically, it sets the image attribute to the value of the IMAGES dictionary, which presumably contains an image of a spaceship. 
-        The rect attribute is set using the get_rect method, which returns a Rect object representing the rectangular area occupied by the sprite and its position on the screen. 
-        The topleft parameter passed to get_rect sets the top-left corner of the rectangle to the coordinates (375, 540), which presumably is the starting position of the spaceship on the screen.
-        Finally, the speed attribute is set to 5, which presumably determines how quickly the ship can move in the game.'''
         sprite.Sprite.__init__(self)
         self.image = IMAGES['ship']
         self.rect = self.image.get_rect(topleft=(375, 540))
         self.speed = 5
 
     def update(self, keys, *args):
-        '''The update method is called once per frame by the game loop, and it updates the position of the Ship object based on the state of the keyboard keys passed in as the keys argument. 
-        The method first checks if the left arrow key is pressed (keys[K_LEFT]) and if the spaceship is within the left screen boundary (position greater than 10). 
-        If both conditions are true, the spaceship's x-coordinate is decremented by the speed attribute. 
-        Next, the method checks if the right arrow key is pressed (keys[K_RIGHT]) and if the spaceship is within the right screen boundary (position less than 740). 
-        If both conditions are true, the spaceship's x-coordinate is incremented by the speed attribute. Finally, the blit method of the screen object 
-        is called to draw the spaceship's image onto the screen at its current position (self.rect).'''
-        if keys[K_LEFT] and self.rect.x > 10: # We add this condition for limit the range of action of the ship
+        if keys[K_LEFT] and self.rect.x > 10: # We add this condition for limit the range of action of the ship to the left
             self.rect.x -= self.speed
-        if keys[K_RIGHT] and self.rect.x < 740:
+        if keys[K_RIGHT] and self.rect.x < 740: # We add this condition for limit the range of action of the ship to the right
             self.rect.x += self.speed
         game.screen.blit(self.image, self.rect)
 
@@ -52,12 +40,14 @@ class Bullet(sprite.Sprite):
 
     def update(self, keys, *args):
         game.screen.blit(self.image, self.rect)
-        self.rect.y += self.speed * self.direction
+        self.rect.y += self.speed * self.direction # we update the position of the bullet at each sprite depending of is speed
         if self.rect.y < 15 or self.rect.y > 600: #add we the bullet if auto kill, to limit the entities computed
             self.kill()
 
 class Enemy(sprite.Sprite):
-    def __init__(self, row, column):
+    '''The Enemy class is a sprite class that represents an enemy in a space invader game. It inherits from the sprite.Sprite class, which is a Pygame class for creating and manipulating sprite objects.'''
+    def __init__(self, row, column): 
+        '''The __init__ method initializes the Enemy object with its position in the grid of enemies, its images, and its rectangular area on the screen. '''
         sprite.Sprite.__init__(self)
         self.row = row
         self.column = column
@@ -68,15 +58,18 @@ class Enemy(sprite.Sprite):
         self.rect = self.image.get_rect()
 
     def toggle_image(self):
+        '''The toggle_image method cycles through the enemy's images to animate its movement, while the update method updates the enemy's position on the screen.'''
         self.index += 1
         if self.index >= len(self.images):
             self.index = 0
         self.image = self.images[self.index]
 
     def update(self, *args):
+        '''we update the screen'''
         game.screen.blit(self.image, self.rect)
 
     def load_images(self):
+        '''The load_images method loads the images for the enemy, based on its position in the grid, and stores them in the images attribute of the object.'''
         images = {0: ['1_2', '1_1'],
                   1: ['2_2', '2_1'],
                   2: ['2_2', '2_1'],
@@ -89,9 +82,9 @@ class Enemy(sprite.Sprite):
         self.images.append(transform.scale(img2, (40, 35)))
 
 class EnemiesGroup(sprite.Group):
-    def __init__(self, columns, rows):
+    def __init__(self, columns, rows): # init the group of enemy with different type. it help to synchronise their movement
         sprite.Group.__init__(self)
-        self.enemies = [[None] * columns for _ in range(rows)]
+        self.enemies = [[None] * columns for _ in range(rows)] # define the columns of ennemies
         self.columns = columns
         self.rows = rows
         self.leftAddMove = 0
@@ -102,12 +95,12 @@ class EnemiesGroup(sprite.Group):
         self.leftMoves = 30
         self.moveNumber = 15
         self.timer = time.get_ticks()
-        self.bottom = game.enemyPosition + ((rows - 1) * 45) + 35
+        self.bottom = game.enemyPosition + ((rows - 1) * 45) + 35 # define the margin between the ennemy, in order that they don't run over themselfs
         self._aliveColumns = list(range(columns))
         self._leftAliveColumn = 0
         self._rightAliveColumn = columns - 1
 
-    def update(self, current_time):
+    def update(self, current_time): # here we track the update of the groupe 
         if current_time - self.timer > self.moveTime:
             if self.direction == 1:
                 max_move = self.rightMoves + self.rightAddMove
@@ -134,18 +127,18 @@ class EnemiesGroup(sprite.Group):
 
             self.timer += self.moveTime
 
-    def add_internal(self, *sprites):
+    def add_internal(self, *sprites): # add a ennemy in the groups
         super(EnemiesGroup, self).add_internal(*sprites)
         for s in sprites:
             self.enemies[s.row][s.column] = s
 
-    def remove_internal(self, *sprites):
+    def remove_internal(self, *sprites): # remove a ennemy in the groups
         super(EnemiesGroup, self).remove_internal(*sprites)
         for s in sprites:
             self.kill(s)
         self.update_speed()
 
-    def is_column_dead(self, column):
+    def is_column_dead(self, column): # stop tracking a column if all the ennemies in it are dead
         return not any(self.enemies[row][column]
                        for row in range(self.rows))
 
@@ -155,13 +148,13 @@ class EnemiesGroup(sprite.Group):
                        for row in range(self.rows, 0, -1))
         return next((en for en in col_enemies if en is not None), None)
 
-    def update_speed(self):
+    def update_speed(self): # update the speed of the group after a new round
         if len(self) == 1:
             self.moveTime = 200
         elif len(self) <= 10:
             self.moveTime = 400
 
-    def kill(self, enemy):
+    def kill(self, enemy): # declare when a ennemy is kill and update the state of the columns 
         self.enemies[enemy.row][enemy.column] = None
         is_column_dead = self.is_column_dead(enemy.column)
         if is_column_dead:
@@ -179,7 +172,7 @@ class EnemiesGroup(sprite.Group):
                 self.leftAddMove += 5
                 is_column_dead = self.is_column_dead(self._leftAliveColumn)
 
-class EnemyExplosion(sprite.Sprite):
+class EnemyExplosion(sprite.Sprite): # set a new state when a ennemy is dead a start an animation and a sound
     def __init__(self, enemy, *groups):
         super(EnemyExplosion, self).__init__(*groups)
         self.image = transform.scale(self.get_image(enemy.row), (40, 35))
@@ -201,7 +194,7 @@ class EnemyExplosion(sprite.Sprite):
         elif 400 < passed:
             self.kill()
 
-class ShipExplosion(sprite.Sprite):
+class ShipExplosion(sprite.Sprite): # set a new state when the player get hit and start an animation and a sound 
     def __init__(self, ship, *groups):
         super(ShipExplosion, self).__init__(*groups)
         self.image = IMAGES['ship']
@@ -215,7 +208,7 @@ class ShipExplosion(sprite.Sprite):
         elif 900 < passed:
             self.kill()
 
-class Life(sprite.Sprite):
+class Life(sprite.Sprite): # keep tracking of the lifes of the player
     def __init__(self, xpos, ypos):
         sprite.Sprite.__init__(self)
         self.image = IMAGES['ship']
@@ -225,7 +218,7 @@ class Life(sprite.Sprite):
     def update(self, *args):
         game.screen.blit(self.image, self.rect)
 
-class Text(object):
+class Text(object): # class to manage the text on the screen
     def __init__(self, textFont, size, message, color, xpos, ypos):
         self.font = font.Font(textFont, size)
         self.surface = self.font.render(message, True, color)
@@ -234,8 +227,8 @@ class Text(object):
     def draw(self, surface):
         surface.blit(self.surface, self.rect)
 
-class SpaceInvaders(object):
-    def __init__(self):
+class SpaceInvaders(object): # the main function that run the game
+    def __init__(self): # init the default setting for the game
         mixer.pre_init(44100, -16, 1, 4096)
         init()
         self.clock = time.Clock()
@@ -247,6 +240,7 @@ class SpaceInvaders(object):
         self.gameOver = False
         # Counter for enemy starting position (increased each new round)
         self.enemyPosition = ENEMY_DEFAULT_POSITION
+        #init all the text for each state of the game
         self.titleText = Text(FONT, 50, 'Space Invaders', WHITE, 164, 155)
         self.titleText2 = Text(FONT, 25, 'Press any key to continue', WHITE,
                                201, 225)
@@ -263,7 +257,7 @@ class SpaceInvaders(object):
         self.life3 = Life(769, 3)
         self.livesGroup = sprite.Group(self.life1, self.life2, self.life3)
 
-    def reset(self, score):
+    def reset(self, score): # we you pass a new round, the game is reset but with different settings 
         self.player = Ship()
         self.playerGroup = sprite.Group(self.player)
         self.explosionsGroup = sprite.Group()
@@ -282,7 +276,7 @@ class SpaceInvaders(object):
         self.makeNewShip = False
         self.shipAlive = True
 
-    def create_audio(self):
+    def create_audio(self): # manage the audio 
         self.sounds = {}
         for sound_name in ['shoot', 'shoot2', 'invaderkilled',
                            'shipexplosion']:
@@ -297,7 +291,7 @@ class SpaceInvaders(object):
 
         self.noteIndex = 0
 
-    def play_main_music(self, currentTime):
+    def play_main_music(self, currentTime): # play the music
         if currentTime - self.noteTimer > self.enemies.moveTime:
             self.note = self.musicNotes[self.noteIndex]
             if self.noteIndex < 3:
@@ -309,10 +303,10 @@ class SpaceInvaders(object):
             self.noteTimer += self.enemies.moveTime
 
     @staticmethod
-    def should_exit(evt):
+    def should_exit(evt):# quit the game when the escape key or the close button is press 
         return evt.type == QUIT or (evt.type == KEYUP and evt.key == K_ESCAPE)
 
-    def check_input(self):
+    def check_input(self): # check the input of the keyboard and make the action link to it 
         self.keys = key.get_pressed()
         for e in event.get():
             if self.should_exit(e):
@@ -339,7 +333,7 @@ class SpaceInvaders(object):
                             self.allSprites.add(self.bullets)
                             self.sounds['shoot2'].play()
 
-    def make_enemies(self):
+    def make_enemies(self): # generates the ennemies by groups 
         enemies = EnemiesGroup(10, 5)
         for row in range(5):
             for column in range(10):
@@ -350,7 +344,7 @@ class SpaceInvaders(object):
 
         self.enemies = enemies
 
-    def make_enemies_shoot(self):
+    def make_enemies_shoot(self): # make the ennemies shoot randomly 
         if (time.get_ticks() - self.timer) > 700 and self.enemies:
             enemy = self.enemies.random_bottom()
             self.enemyBullets.add(
@@ -359,20 +353,19 @@ class SpaceInvaders(object):
             self.allSprites.add(self.enemyBullets)
             self.timer = time.get_ticks()
 
-    def calculate_score(self, row):
+    def calculate_score(self, row): # compute the score when a ennemy is hit, depending on is type 
         scores = {0: 30,
                   1: 20,
                   2: 20,
                   3: 10,
                   4: 10,
-                  5: choice([50, 100, 150, 300])
                   }
 
         score = scores[row]
         self.score += score
         return score
 
-    def create_main_menu(self):
+    def create_main_menu(self):# display the main menu at the beginning of a new game 
         self.enemy1 = IMAGES['enemy3_1']
         self.enemy1 = transform.scale(self.enemy1, (40, 40))
         self.enemy2 = IMAGES['enemy2_2']
@@ -383,7 +376,7 @@ class SpaceInvaders(object):
         self.screen.blit(self.enemy2, (318, 320))
         self.screen.blit(self.enemy3, (318, 370))
 
-    def check_collisions(self):
+    def check_collisions(self): # check the collisions when a bullet it something 
         sprite.groupcollide(self.bullets, self.enemyBullets, True, True)
 
         for enemy in sprite.groupcollide(self.enemies, self.bullets,
@@ -418,7 +411,7 @@ class SpaceInvaders(object):
                 self.startGame = False
 
 
-    def create_new_ship(self, createShip, currentTime):
+    def create_new_ship(self, createShip, currentTime): # when a new game or new round is started we create a new ship
         if createShip and (currentTime - self.shipTimer > 900):
             self.player = Ship()
             self.allSprites.add(self.player)
@@ -426,7 +419,7 @@ class SpaceInvaders(object):
             self.makeNewShip = False
             self.shipAlive = True
 
-    def create_game_over(self, currentTime):
+    def create_game_over(self, currentTime):# function to set a game over 
         self.screen.blit(self.background, (0, 0))
         passed = currentTime - self.timer
         if passed < 750:
@@ -444,7 +437,7 @@ class SpaceInvaders(object):
             if self.should_exit(e):
                 sys.exit()
 
-    def main(self):
+    def main(self): # main function to run the code 
         while True:
             if self.mainScreen:
                 self.screen.blit(self.background, (0, 0))
@@ -506,7 +499,6 @@ class SpaceInvaders(object):
 
             display.update()
             self.clock.tick(60)
-
 
 if __name__ == '__main__':
     game = SpaceInvaders()
