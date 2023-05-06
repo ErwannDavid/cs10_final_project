@@ -14,8 +14,11 @@ the alien invasion is successful and the game ends.
 
 ## How To Play
 
-- If you don't have [Python](https://www.python.org/downloads/) or [Pygame](http://www.pygame.org/download.shtml) installed, you can simply double click the .exe file to play the game.
-  **Note:** _The .exe file needs to stay in the same directory as the sounds, images, and font folders._
+- In order to run the game you need to have pyhton 3.x and the librairy Pygame install 
+
+```bash
+pip install pygame
+```
 
 - If you have the correct version of Python and Pygame installed, you can run the program in the command prompt / terminal.
 
